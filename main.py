@@ -82,8 +82,8 @@ class GridImage:
         self.signed_uri = generate_download_signed_url_v4(self.bucket, self.fn)
 
 
-results: list[GridImage] = [GridImage(uri=r) for r in results]
-results = [r.signed_uri in r if r.signed_uri != '']
+results = [GridImage(uri=r) for r in results]
+results = [r.signed_uri for r in results if r.signed_uri]
 # %%
 print('ok!')
 ipyplot.plot_images(results,
