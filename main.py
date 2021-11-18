@@ -26,6 +26,7 @@ from google.cloud import storage
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "project-fermi-24f48601c1b4.json"
 
+
 def extract_bucket_and_fn(path: str):
     path = path.replace('gs://', '')
     path_elements = path.split('/')
@@ -44,14 +45,18 @@ def generate_download_signed_url_v4(bucket_name, blob_name):
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
+    try:
 
-    url = blob.generate_signed_url(
-        version="v4",
-        # This URL is valid for 60 minutes
-        expiration=datetime.timedelta(minutes=60),
-        # Allow GET requests using this URL.
-        method="GET",
-    )
+        url = blob.generate_signed_url(
+            version="v4",
+            # This URL is valid for 60 minutes
+            expiration=datetime.timedelta(minutes=60),
+            # Allow GET requests using this URL.
+            method="GET",
+        )
+    except UnicodeError:
+        print(blob_name)
+        return ''
     # print("Generated GET signed URL:")
     # print(url)
     # print("You can use this URL with any user agent, for example:")
@@ -59,8 +64,28 @@ def generate_download_signed_url_v4(bucket_name, blob_name):
     return url
 
 
-#%%
-results = [r.uri for r in results]
-results = [extract_bucket_and_fn(r) for r in results]
-results = [generate_download_signed_url_v4(*r) for r in results]
-ipyplot.plot_images(results, )
+# %%
+from dataclasses import dataclass
+
+
+@dataclass
+class GridImage:
+    uri: str = ''
+    label: str = 'no label'
+    bucket: str = ''
+    fn: str = ''
+    signed_uri: str = ''
+
+    def __post_init__(self):
+        self.bucket, self.fn = extract_bucket_and_fn(self.uri)
+        self.label = self.fn
+        self.signed_uri = generate_download_signed_url_v4(self.bucket, self.fn)
+
+
+results: list[GridImage] = [GridImage(uri=r) for r in results]
+results = [r.signed_uri in r if r.signed_uri != '']
+# %%
+print('ok!')
+ipyplot.plot_images(results,
+                    labels=range(0, len(results))
+                    )
