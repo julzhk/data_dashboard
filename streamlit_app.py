@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+from google.cloud import bigquery
+
+client = bigquery.Client()
 
 df = pd.DataFrame({
     'first column': [1, 2, 3, 4],
