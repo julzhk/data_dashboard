@@ -81,15 +81,19 @@ with st.container():
         col1, col2 = st.columns(2)
         st.header("Select resource")
         with col1:
-            option = st.selectbox(
+            campaign_option = st.selectbox(
                 'Campaign',
                 campaigns
             )
+            total_score = st.slider('Minimum Total Score?', 0, 200, 25)
         submitted = st.form_submit_button("Submit")
         if submitted:
-            query = """
+            query = f"""
                 SELECT  * FROM `project-fermi.adidas.dab_omg_match_output`
-                LIMIT 10
+                WHERE campaign = "{campaign_option}"
+                AND total_score >= {total_score}
+                    ORDER BY total_score DESC 
+                LIMIT 100
                 """
             rows = run_query(query=query)
 
@@ -102,5 +106,6 @@ with st.container():
 
                 with col2:
                     st.header("OMG Adapted Results")
-                    for image in [SignedImage(r['uri_omg']) for r in rows]:
-                        st.image(image.signed_uri)
+                    for r in rows:
+                        st.image(SignedImage(r['uri_omg']).signed_uri)
+                        st.write(r['total_score'])
