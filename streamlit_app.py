@@ -1,11 +1,11 @@
-import streamlit as st
-from google.oauth2 import service_account
-from google.cloud import bigquery
 import datetime
-import os
 from dataclasses import dataclass
+from math import floor, ceil
+
+import streamlit as st
+from google.cloud import bigquery
 from google.cloud import storage
-import urllib.parse
+from google.oauth2 import service_account
 
 # Create API client.
 credentials = service_account.Credentials.from_service_account_info(
@@ -20,6 +20,7 @@ def extract_bucket_and_fn(path: str):
     path_elements = list(map(urllib.parse.quote, path_elements))
     fn = path_elements.pop()
     bucket = '/'.join(path_elements)
+    bucket = bucket.replace(' ', '%20')
     return (bucket, fn)
 
 
@@ -70,36 +71,69 @@ def run_query(query):
     return rows
 
 
-query = """
+def get_campaigns():
+    query = """
     SELECT  DISTINCT campaign FROM `project-fermi.adidas.dab_omg_match_output`
     LIMIT 50
     """
-results = run_query(query=query)
-campaigns = [r['campaign'] for r in results]
+    results = run_query(query=query)
+    return [r['campaign'] for r in results]
 
+
+campaigns = get_campaigns()
 st.header("Awesome Data viz")
+
+
+def get_rows(campaign_option, total_score):
+    query = f"""
+            SELECT  * FROM `project-fermi.adidas.dab_omg_match_output`
+            WHERE campaign = "{campaign_option}"
+            AND total_score >= {total_score}
+                ORDER BY total_score DESC
+            LIMIT 10
+            """
+    rows = run_query(query=query)
+    return rows
+
+
+def round_up(num, divisor):
+    return ceil(num / divisor) * divisor
+
+
+def round_down(num, divisor):
+    return floor(num / divisor) * divisor
+
+
+def get_max_min_range():
+    query = f"""
+    SELECT MAX(total_score), MIN(total_score)
+        FROM `project-fermi.adidas.dab_omg_match_output`
+            """
+    biggest, smallest = run_query(query=query)[0].values()
+    steps = round_up(((biggest - smallest) // 10), 5)
+    return round_up(biggest, steps), round_down(smallest, steps), steps
+
+
 with st.form("my_form"):
     st.header("Select resource")
     campaign_option = st.selectbox(
         'Campaign',
         campaigns
     )
-    total_score = st.slider('Minimum Total Score?', 0, 200, 25)
+    bg, sm, steps = get_max_min_range()
+    total_score = st.slider(
+        label='Minimum Total Score?',
+        min_value=sm,
+        max_value=bg,
+        step=steps)
     submitted = st.form_submit_button("Submit")
     if submitted:
-        query = f"""
-            SELECT  * FROM `project-fermi.adidas.dab_omg_match_output`
-            WHERE campaign = "{campaign_option}"
-            AND total_score >= {total_score}
-                ORDER BY total_score DESC
-            LIMIT 100
-            """
-        rows = run_query(query=query)
-        st.header("DAB Sources")
-        for image in [SignedImage(r['uri_dab']) for r in rows]:
-            st.image(image.signed_uri)
-
-        st.header("OMG Adapted Results")
+        rows = get_rows(campaign_option=campaign_option, total_score=total_score)
+        st.header(f"DAB Sources | Results: {len(rows)}")
         for r in rows:
-            st.image(SignedImage(r['uri_omg']).signed_uri)
-            st.write(r['total_score'])
+            col1, col2 = st.columns(2)
+            with col1:
+                st.image(SignedImage(r['uri_omg']).signed_uri)
+            with col2:
+                st.image(SignedImage(r['uri_dab']).signed_uri)
+                st.write(r['total_score'])
