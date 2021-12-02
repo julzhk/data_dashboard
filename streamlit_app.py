@@ -13,11 +13,25 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 client = bigquery.Client(credentials=credentials)
 
+working_uri = [
+    # "gs://dab_asset_iin/IIN/H23078-group1_300x50-736772/Misc/group1_300x50/MISC/talent_03.jpg",
+    # "gs://dab_asset_iin/IIN/H23078-group1_320x50-736774/Misc/group1_320x50/MISC/talent_03.jpg",
+    # "gs://dab_asset_iin/IIN/H23078-group1_728x90-736776/Misc/group1_728x90/MISC/talent_03.jpg",
+    # "gs://dab_asset_iin/IIN/H23078-group3_728x90-736794/Misc/group3_728x90/MISC/talent_01.jpg",
+    # "gs://dab_asset_iin/IIN/H23078-horizontal-concepts-ss21-IIN-sustain-crm-main-story-1-image-all041521-743080/+H23078-horizontal-concepts-ss21-IIN-sustain-crm-main-story-1-image-all041521-743080.jpg",
+    # "gs://dab_asset_iin/IIN/H23078-horizontal-concepts-ss21-IIN-sustain-crm-main-story-2-image-all041521-743083/+H23078-horizontal-concepts-ss21-IIN-sustain-crm-main-story-2-image-all041521-743083.jpg",
+    # "gs://dab_asset_adicolor/adicolor/778217-adicolor-FW21-Inclusive-June-July-APP-DROP-Women/adicolor-FW21-June-July-APP-DROP-Women.jpg",
+    # "gs://dab_asset_iin/IIN/ADI_IIN21_CHARLYN_CORRAL_DIGITAL-SOCIAL_2/JPEG/IIN21_CHARLYN_CORRAL_DIGITAL_MOBILE_320X50.jpg",
+    # "gs://dab_asset_iin/IIN/ADI_IIN21_Amanda_Zahui_Digital/JPG/ADI_IIN21_Amanda_Zahui_Digital_Mobile_320x50.jpg",
+    'gs://dab_asset_iin/IIN/ADI_IIN21_LIONEL_MESSI_SPANISH_SOCIAL DIGITAL/JPEG/ADI_IIN21_LIONEL_MESSI_SPANISH_Digital_Mobile_320x50.jpg',
+    'gs://omg_asset_iin_unzip/unzipped_omg_asset_iin/Templates for JP/ADI_IIN21_LIONEL_MESSI_English_SOCIAL DIGITAL_Folder/JPEG/ADI_IIN21_LIONEL_MESSI_ENGLISH_Digital_Social_16by9_1600x900_V3.jpg',
+]
+
 
 def extract_bucket_and_fn(path: str):
     path = path.replace('gs://', '')
     path_elements = path.split('/')
-    path_elements = list(map(urllib.parse.quote, path_elements))
+    # path_elements = list(map(urllib.parse.quote, path_elements))
     fn = path_elements.pop()
     bucket = '/'.join(path_elements)
     bucket = bucket.replace(' ', '%20')
@@ -104,14 +118,21 @@ def round_down(num, divisor):
     return floor(num / divisor) * divisor
 
 
-def get_max_min_range():
+def get_max_min_range(number_of_steps=10, step_units=5):
     query = f"""
     SELECT MAX(total_score), MIN(total_score)
         FROM `project-fermi.adidas.dab_omg_match_output`
             """
     biggest, smallest = run_query(query=query)[0].values()
-    steps = round_up(((biggest - smallest) // 10), 5)
-    return round_up(biggest, steps), round_down(smallest, steps), steps
+    step_size = get_step_size(biggest, number_of_steps, smallest, step_units)
+    return round_up(biggest, step_size), round_down(smallest, step_size), step_size
+
+
+def get_step_size(biggest, number_of_steps, smallest, step_units):
+    # get the params for the slider - round down/up to get the whole range
+    # and set a step size to the nearest 5 to give <number_of_steps> steps
+    # ie 10 seems sensible
+    return round_up(((biggest - smallest) // number_of_steps), step_units)
 
 
 with st.form("my_form"):
@@ -120,12 +141,12 @@ with st.form("my_form"):
         'Campaign',
         campaigns
     )
-    bg, sm, steps = get_max_min_range()
+    bg, sm, step_size = get_max_min_range()
     total_score = st.slider(
         label='Minimum Total Score?',
         min_value=sm,
         max_value=bg,
-        step=steps)
+        step=step_size)
     submitted = st.form_submit_button("Submit")
     if submitted:
         rows = get_rows(campaign_option=campaign_option, total_score=total_score)
