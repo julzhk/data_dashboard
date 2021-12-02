@@ -5,6 +5,7 @@ import datetime
 import os
 from dataclasses import dataclass
 from google.cloud import storage
+import urllib.parse
 
 # Create API client.
 credentials = service_account.Credentials.from_service_account_info(
@@ -16,6 +17,7 @@ client = bigquery.Client(credentials=credentials)
 def extract_bucket_and_fn(path: str):
     path = path.replace('gs://', '')
     path_elements = path.split('/')
+    path_elements = list(map(urllib.parse.quote, path_elements))
     fn = path_elements.pop()
     bucket = '/'.join(path_elements)
     return (bucket, fn)
@@ -76,36 +78,28 @@ results = run_query(query=query)
 campaigns = [r['campaign'] for r in results]
 
 st.header("Awesome Data viz")
-with st.container():
-    with st.form("my_form"):
-        col1, col2 = st.columns(2)
-        st.header("Select resource")
-        with col1:
-            campaign_option = st.selectbox(
-                'Campaign',
-                campaigns
-            )
-            total_score = st.slider('Minimum Total Score?', 0, 200, 25)
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            query = f"""
-                SELECT  * FROM `project-fermi.adidas.dab_omg_match_output`
-                WHERE campaign = "{campaign_option}"
-                AND total_score >= {total_score}
-                    ORDER BY total_score DESC 
-                LIMIT 100
-                """
-            rows = run_query(query=query)
+with st.form("my_form"):
+    st.header("Select resource")
+    campaign_option = st.selectbox(
+        'Campaign',
+        campaigns
+    )
+    total_score = st.slider('Minimum Total Score?', 0, 200, 25)
+    submitted = st.form_submit_button("Submit")
+    if submitted:
+        query = f"""
+            SELECT  * FROM `project-fermi.adidas.dab_omg_match_output`
+            WHERE campaign = "{campaign_option}"
+            AND total_score >= {total_score}
+                ORDER BY total_score DESC
+            LIMIT 100
+            """
+        rows = run_query(query=query)
+        st.header("DAB Sources")
+        for image in [SignedImage(r['uri_dab']) for r in rows]:
+            st.image(image.signed_uri)
 
-            with st.container():
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.header("DAB Sources")
-                    for image in [SignedImage(r['uri_dab']) for r in rows]:
-                        st.image(image.signed_uri)
-
-                with col2:
-                    st.header("OMG Adapted Results")
-                    for r in rows:
-                        st.image(SignedImage(r['uri_omg']).signed_uri)
-                        st.write(r['total_score'])
+        st.header("OMG Adapted Results")
+        for r in rows:
+            st.image(SignedImage(r['uri_omg']).signed_uri)
+            st.write(r['total_score'])
