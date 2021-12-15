@@ -1,2 +1,4 @@
 /.streamlit/secrets.toml
 /project-fermi-24f48601c1b4.json
+/Pipfile
+/Pipfile.lock

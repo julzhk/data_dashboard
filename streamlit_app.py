@@ -1,6 +1,9 @@
 import datetime
+from logging import captureWarnings
 from dataclasses import dataclass
 from math import floor, ceil
+import pandas as pd
+import json
 
 import streamlit as st
 from google.cloud import bigquery
@@ -135,6 +138,25 @@ def get_step_size(biggest, number_of_steps, smallest, step_units):
     return round_up(((biggest - smallest) // number_of_steps), step_units)
 
 
+# Added Images MetaData Function
+def get_metadata(campaign_option):
+    print(campaign_option)
+    # query = f"""
+    #         SELECT  * FROM `project-fermi.adidas.gcp_vision_output_new`
+    #         WHERE campaign = "{campaign_option}"
+    #         LIMIT 10
+    #         """
+    query = f"""
+            SELECT  * FROM `project-fermi.adidas.gcp_vision_output_new`
+            LIMIT 10
+            """
+    rows = run_query(query=query)
+    # print(rows)
+    df = pd.DataFrame(rows)
+    rows = df['label_annotations'] 
+    return rows
+# ----------------------------------
+
 with st.form("my_form"):
     st.header("Select resource")
     campaign_option = st.selectbox(
@@ -150,11 +172,19 @@ with st.form("my_form"):
     submitted = st.form_submit_button("Submit")
     if submitted:
         rows = get_rows(campaign_option=campaign_option, total_score=total_score)
+        
+        # Calling Metadata Function
+        imgs_metadata = get_metadata(campaign_option)
+
         st.header(f"DAB Sources | Results: {len(rows)}")
-        for r in rows:
-            col1, col2 = st.columns(2)
+        
+        # Added new column for some metadata
+        for r,c in zip(rows, imgs_metadata):
+            col1, col2, col3 = st.columns([3,3,6])
             with col1:
                 st.image(SignedImage(r['uri_omg']).signed_uri)
             with col2:
                 st.image(SignedImage(r['uri_dab']).signed_uri)
                 st.write(r['total_score'])
+            with col3:
+                st.json(c)
