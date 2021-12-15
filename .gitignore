@@ -2,3 +2,8 @@
 /project-fermi-24f48601c1b4.json
 /Pipfile
 /Pipfile.lock
+.idea/vcs.xml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/data_dashboard.iml
