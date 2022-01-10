@@ -13,7 +13,7 @@ from google.cloud import storage
 from google.oauth2 import service_account
 import numpy as np
 
-from st_aggrid import AgGrid
+# from st_aggrid import AgGrid
 
 # Variables
 table_names = ['project-fermi.adidas.dab_omg_match_algo_viewer', 'project-fermi.adidas.feedback']
@@ -253,25 +253,45 @@ st.header("Adidas Reporting 2.0 (Testbed)")
 post_value_list = []
 global feedback_text
 feedback_text = []
+
+global property_weights_feedback
+global size_weights_feedback
+global label_weights_feedback
+
+property_weights_feedback = []
+size_weights_feedback = []
+label_weights_feedback = []
+
+
 # -------------------------------
 # Submit Feedback button
 def submit_feedback(**data_dict):
-    print(feedback_text)
-
+    # print(feedback_text)
+    # print(feedback_text[btn_key])
+    # print(property_weights_feedback[data_dict['btn_key']])
     # For Development and Testing purpose
     # for key, value in data_dict.items():
     #     print(f"{key}: {value}")
 
     # Building up query to insert data to feedback table
     query = f"""
-        INSERT INTO `{table_names[1]}` (algorithm_version, match_uri, source_uri, date, score, reason)
+        INSERT INTO `{table_names[1]}` (algorithm_version, match_uri, source_uri, date, total_score, token_match, size_score, property_score, label, size, property, reason, property_feedback, size_feedback, label_feedback)
         VALUES (
                 "{data_dict['algorithm_version']}",
                 "{data_dict['match_uri']}",
                 "{data_dict['source_uri']}",
                 "{data_dict['date']}",
-                {data_dict['score']},
-                "Bad Score due to color mismatch")
+                {data_dict['total_score']},
+                {data_dict['token_match']},
+                {data_dict['size_score']},
+                {data_dict['property_score']},
+                {data_dict['label']},
+                {data_dict['size']},
+                {data_dict['property']},
+                "Bad Score due to color mismatch",
+                "{property_weights_feedback[data_dict['btn_key']]}",
+                "{size_weights_feedback[data_dict['btn_key']]}",
+                "{label_weights_feedback[data_dict['btn_key']]}")
         """
     # print(query)
 
@@ -279,6 +299,12 @@ def submit_feedback(**data_dict):
     results = run_query(query=query)
     print(results)
 
+
+# Initialize Session state
+if 'load_state' not in st.session_state:
+    st.session_state.load_state = False
+# Tuple for radio button options
+options = ('Matched', 'Partially Matched', 'Unmatched')
 # --------------------------
 # Creating Container
 with st.container():
@@ -305,7 +331,10 @@ with st.container():
         max_value=max_val,
         step=step_size)
     # Button to get Data
-    if (st.button("Get Data")):
+    load = st.button("Load Data")
+
+    if (load or st.session_state.load_state):
+        st.session_state.load_state = True
         feedback_text = []
         post_value_list = []
         query_results = get_rows(campaign_option, weights_version, total_score)
@@ -375,8 +404,9 @@ with st.container():
 
                 temp_df = pd.DataFrame.from_dict(r, orient ='index')
                 # temp_df.drop('property', inplace=True, axis=1)
-                temp_df = temp_df.iloc[16:22]
+                temp_df = temp_df.iloc[14:24]
                 temp_df = temp_df.T
+                temp_df = temp_df[['total_score', 'size', 'property', 'label']]
                 # temp_df = np.round(temp_df, decimals=3)
                 st.write(np.round(temp_df, decimals=2))
                 # st.json(r)
@@ -390,16 +420,34 @@ with st.container():
                     'match_uri' : r['uri_dab'],
                     'source_uri' : r['uri_omg'],
                     'date' : datetime.datetime.now(),
-                    'score': int(r['total_score']),
+                    'total_score': int(r['total_score']),
+                    'size_score': int(r['size_score']),
+                    'property': int(r['property']),
+                    'property_score': int(r['property_score']),
+                    'label': int(r['label']),
+                    'size': int(r['size']),
+                    'token_match': int(r['token_match']),
                     'btn_key': btn_key
                 }
                 post_value_list.append(temp_data_dict)
                 feedback_text.append(btn_key)
+
                 # Expander will display input text field for feedback
                 with st.expander("Feedback"):
+
                     # with st.form(str(btn_key)):
-                    feedback_text[btn_key] = st.text_input("Reason:", key=btn_key, placeholder="Unmatched images etc.")
+                    #     feedback_text[btn_key] = st.text_input("Reason:", key=btn_key,
+                    #                                            placeholder="Unmatched images etc.")
+                    #     print(f"feedback: {feedback_text[btn_key]}")
+                    #     st.form_submit_button(label="Submit", on_click=submit_feedback, kwargs=(post_value_list[btn_key]))
+                    # with st.form(str(btn_key)):
+                    # feedback_text[btn_key] = st.text_input("Reason:", key=btn_key, placeholder="Unmatched images etc.")
+                    property_weights_feedback.append(st.radio("Property Weights", options, key='property'+str(btn_key)))
+                    size_weights_feedback.append(st.radio("Size Weights", options, key='size'+str(btn_key)))
+                    label_weights_feedback.append(st.radio("Label Weights", options, key='label'+str(btn_key)))
+
                     # post_value_list[btn_key]['reason'] = feedback_text
                     submitted = st.button("Submit", key=btn_key, on_click=submit_feedback, kwargs=(post_value_list[btn_key]))
-# *********************************************
 
+
+# *********************************************
