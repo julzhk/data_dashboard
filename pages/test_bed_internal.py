@@ -17,6 +17,7 @@ from streamlit_echarts import st_echarts
 from PIL import Image
 im = Image.open("./assets/protocol_testbed_icon.png")
 
+
 st.set_page_config(
     page_title="Adidas Oliver TestBed",
     page_icon=im,
