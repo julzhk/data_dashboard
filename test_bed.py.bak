@@ -13,14 +13,11 @@ from google.cloud import storage
 from google.oauth2 import service_account
 import numpy as np
 
-# from st_aggrid import AgGrid
+from st_aggrid import AgGrid
 
 # Variables
 table_names = ['project-fermi.adidas.dab_omg_match_algo_viewer', 'project-fermi.adidas.feedback']
 column_names = []
-# users list
-users = ["Nick", "Krish", "Dani", "Jane", "Julian", "Hassaan"]
-user_name = ""
 
 # Create API client.
 credentials = service_account.Credentials.from_service_account_info(
@@ -96,15 +93,12 @@ def get_distinct_values_frm_cols(table_name,column_name):
 
 
 # Get Rows based on filter
-def get_rows(campaign_option, weights_version, total_score, property, size, label):
+def get_rows(campaign_option, weights_version, total_score):
     query = f"""
     SELECT  * FROM `{table_names[0]}`
     WHERE campaign = "{campaign_option}"
         AND version = "{weights_version}"
         AND total_score >= {total_score}
-        AND property >= {property}
-        AND size >= {size}
-        AND label >= {label}
             ORDER BY total_score ASC
     LIMIT 10
     """
@@ -134,16 +128,6 @@ def get_max_min_range(column_name, number_of_steps=10, step_units=5):
     step_size = get_step_size(biggest, number_of_steps, smallest, step_units)
     return round_up(biggest, step_size), round_down(smallest, step_size), step_size
 
-def get_weights_max_min_range(column_name, number_of_steps=1, step_units=0.01):
-    query = f"""
-    SELECT MAX({column_name}), MIN({column_name})
-        FROM `{table_names[0]}`
-            """
-    biggest, smallest = run_query(query=query)[0].values()
-    print(biggest)
-    step_size = get_step_size(biggest, number_of_steps, smallest, step_units)
-    return biggest, smallest, step_size
-
 # Setting page width
 st.set_page_config(layout="wide")
 
@@ -160,27 +144,6 @@ column_names.append("version")
 versions = get_distinct_values_frm_cols(table_names[0], column_names[-1])
 # Get All Distinct Versions
 
-# Get All Distinct Asset Name
-column_names.append("file_name_dab")
-# print(column_names[-1])
-dab_asset =  get_distinct_values_frm_cols(table_names[0], column_names[-1])
-
-# Get All Distinct Size Weights
-column_names.append("size")
-# print(column_names[-1])
-size_min, size_max, size_step_size = get_weights_max_min_range(column_names[-1])
-
-# Get All Distinct label Weights
-column_names.append("label")
-# print(column_names[-1])
-label_min, label_max, label_step_size = get_weights_max_min_range(column_names[-1])
-
-# Get All Distinct Property Weights
-column_names.append("property")
-# print(column_names[-1])
-property_min, property_max, label_step_size = get_weights_max_min_range(column_names[-1])
-
-
 # Get MAX and MIN Total Score
 column_names.append("total_score")
 min_val, max_val, step_size = get_max_min_range(column_names[-1])
@@ -196,6 +159,93 @@ temp_col_names.append('uri_omg')
 temp_col_names.append('property_score')
 temp_col_names.append('token_match')
 temp_col_names.append('size_score')
+# Main Form
+# with st.form("form_output"):
+#     st.header("Get Data")
+#
+#     # Campaign Filter
+#     campaign_option = st.selectbox(
+#         'Campaign',
+#         campaigns
+#     )
+#
+#     # Weights Version Filter
+#     weights_version = st.selectbox(
+#         'Weights Version',
+#         versions
+#     )
+#
+#     # Slider for Total Score
+#     total_score = st.slider(
+#         label='Minimum Total Score ?',
+#         min_value=min_val,
+#         max_value=max_val,
+#         step=step_size)
+#
+#     submitted = st.form_submit_button("Submit")
+#     if submitted:
+#         query_results = get_rows(campaign_option, weights_version, total_score)
+#         # query_results = pd.DataFrame(query_results)
+#
+#         # Print All columns Names
+#         # st.header("Columns from Table: ")
+#         # for col in query_results.columns:
+#         #     st.markdown(f"* {col}")
+#
+#         # st.dataframe(query_results[temp_col_names])
+#
+#         col1, col2, col3, col4 = st.columns([2, 2, 5, 3])
+#         with col1:
+#             st.header("OMG Asset")
+#         with col2:
+#             st.header("DAB Asset")
+#         with col3:
+#             st.header("Matching Info.")
+#         # Iterate over each row and mapped it into columns
+#         for r in query_results:
+#             # print(r[0])
+#             with col1:
+#                 temp_image = Image.open(requests.get(SignedImage(r['uri_omg']).signed_uri, stream=True).raw)
+#                 # temp_image = temp_image.resize((200,50))
+#                 # st.image(temp_image)
+#                 col1.image(temp_image, use_column_width=True)
+#             with col2:
+#                 temp_image = Image.open(requests.get(SignedImage(r['uri_dab']).signed_uri, stream=True).raw)
+#                 # temp_image = temp_image.resize((200,50))
+#                 # st.image(temp_image)
+#                 col2.image(temp_image, use_column_width=True)
+#
+#             with col3:
+#                 match_info = f"""
+#                             * orientation_dab: {r['orientation_dab']}
+#                             * orientation_omg: {r['orientation_omg']}
+#                             * size_dab: {r['size_dab']}
+#                             * size_omg: {r['size_omg']}
+#                             * first_frac_rgb_dab: {r['first_frac_rgb_dab']}
+#                             * first_frac_rgb_omg: {r['first_frac_rgb_omg']}
+#                             * second_frac_rgb_dab: {r['second_frac_rgb_dab']}
+#                             * second_frac_rgb_omg: {r['second_frac_rgb_omg']}
+#                             * third_frac_rgb_dab:  {r['third_frac_rgb_dab']}
+#                             * third_frac_rgb_omg: {r['third_frac_rgb_omg']}
+#                             * property_score: {r['property_score']}
+#                             * token_match: {r['token_match']}
+#                             * size_score: {r['size_score']}
+#                             * property: {r['property']}
+#                             * label: {r['label']}
+#                             * size: {r['size']}
+#                             * total_score: {r['total_score']}
+#                             * version: {r['version']}
+#                             * campaign: {r['campaign']}
+#                             """
+#                 # st.markdown(match_info)
+#                 # st.markdown("---")
+#                 # st.write(r['total_score'])
+#                 st.dataframe(pd.DataFrame(r.items()).astype(str))
+#
+#             with col4:
+#                 add_button()
+
+# -------------------------------
 
 # *********************************************
 st.header("Adidas Reporting 2.0 (Testbed)")
@@ -203,76 +253,33 @@ st.header("Adidas Reporting 2.0 (Testbed)")
 post_value_list = []
 global feedback_text
 feedback_text = []
-
-global property_weights_feedback
-global size_weights_feedback
-global label_weights_feedback
-
-property_weights_feedback = []
-size_weights_feedback = []
-label_weights_feedback = []
-
-
 # -------------------------------
 # Submit Feedback button
-# Uses st.cache to only rerun when the query changes or after 10 min.
-@st.cache(ttl=600)
 def submit_feedback(**data_dict):
-    # print(feedback_text)
-    # print(feedback_text[btn_key])
-    # print(property_weights_feedback[data_dict['btn_key']])
+    print(feedback_text)
+
     # For Development and Testing purpose
     # for key, value in data_dict.items():
     #     print(f"{key}: {value}")
 
     # Building up query to insert data to feedback table
     query = f"""
-        INSERT INTO `{table_names[1]}` (
-        algorithm_version, 
-        match_uri, 
-        source_uri, 
-        date, 
-        total_score, 
-        token_match, 
-        size_weight, 
-        property_score, 
-        reason, 
-        property_feedback, 
-        size_feedback, 
-        label_feedback,
-        user)
+        INSERT INTO `{table_names[1]}` (algorithm_version, match_uri, source_uri, date, score, reason)
         VALUES (
                 "{data_dict['algorithm_version']}",
                 "{data_dict['match_uri']}",
                 "{data_dict['source_uri']}",
                 "{data_dict['date']}",
-                {data_dict['total_score']},
-                {data_dict['token_match']},
-                {data_dict['size_score']},
-                {data_dict['property_score']},
-                "Bad Score due to color mismatch",
-                "{property_weights_feedback[data_dict['btn_key']]}",
-                "{size_weights_feedback[data_dict['btn_key']]}",
-                "{label_weights_feedback[data_dict['btn_key']]}",
-                "{user_name}")
+                {data_dict['score']},
+                "Bad Score due to color mismatch")
         """
     # print(query)
-    print(property_weights_feedback[btn_key])
-    print(size_weights_feedback[btn_key])
-    print(label_weights_feedback[btn_key])
 
     # RUN SQL
     results = run_query(query=query)
     print(results)
 
-
-# Initialize Session state
-if 'load_state' not in st.session_state:
-    st.session_state.load_state = False
-# Tuple for radio button options
-options = ('Matched', 'Partially Matched', 'Unmatched')
 # --------------------------
-
 # Creating Container
 with st.container():
     # Setting up 2 columns for input fields
@@ -291,67 +298,17 @@ with st.container():
             'Weights Version',
             versions
         )
-
-    col3, col4 = st.columns([6, 6])
-    # Column 3: For username
-    with col3:
-        # Campaign Filter
-        user_name = st.selectbox(
-            'User',
-            users
-        )
-    # Column 4: For DAB Asset
-    with col4:
-        # Weights Version Filter
-        DAB_ASSET_NAME = st.selectbox(
-            'DAB Asset',
-            dab_asset
-        )
-
-    col5, col6, col7 = st.columns([4, 4, 4])
-    # Column 5: For Size Weights
-    with col5:
-        size_weights_list = ["*"]
-        # Weights Version Filter
-        size_weight = st.slider(
-            label = 'Size Weights:',
-            min_value=size_min,
-            max_value=size_max,
-            step=0.01
-        )
-    # Column 6: For Size Weights
-    with col6:
-        # Weights Version Filter
-        label_weight = st.slider(
-            label='Label Weights:',
-            min_value=label_min,
-            max_value=label_max,
-            step=0.01
-        )
-    # Column 7: For Label Weights
-    with col7:
-        # Weights Version Filter
-        property_weight = st.slider(
-            label='Property Weights:',
-            min_value=property_min,
-            max_value=property_max,
-            step=0.01
-        )
-
     # Slider for Total Score
     total_score = st.slider(
-        label='Minimum Total Score:',
+        label='Minimum Total Score ?',
         min_value=min_val,
         max_value=max_val,
-        step=1)
+        step=step_size)
     # Button to get Data
-    load = st.button("Load Data")
-
-    if (load or st.session_state.load_state):
-        st.session_state.load_state = True
+    if (st.button("Get Data")):
         feedback_text = []
         post_value_list = []
-        query_results = get_rows(campaign_option, weights_version, total_score, property_weight, size_weight, label_weight)
+        query_results = get_rows(campaign_option, weights_version, total_score)
 
         # query_results = pd.DataFrame(query_results)
 
@@ -376,7 +333,7 @@ with st.container():
         # Iterate over each row and mapped it into columns
         for r in query_results:
             # print(r[0])
-            col1, col2, col3, col4 = st.columns([2, 2, 4, 4])
+            col1, col2, col3, col4 = st.columns([2, 2, 5, 3])
             # URI OMG Image Column
             with col1:
                 temp_image = Image.open(requests.get(SignedImage(r['uri_omg']).signed_uri, stream=True).raw)
@@ -418,9 +375,8 @@ with st.container():
 
                 temp_df = pd.DataFrame.from_dict(r, orient ='index')
                 # temp_df.drop('property', inplace=True, axis=1)
-                temp_df = temp_df.iloc[14:24]
+                temp_df = temp_df.iloc[16:22]
                 temp_df = temp_df.T
-                temp_df = temp_df[['total_score', 'token_match', 'size', 'size_score', 'property', 'property_score', 'label',]]
                 # temp_df = np.round(temp_df, decimals=3)
                 st.write(np.round(temp_df, decimals=2))
                 # st.json(r)
@@ -434,34 +390,16 @@ with st.container():
                     'match_uri' : r['uri_dab'],
                     'source_uri' : r['uri_omg'],
                     'date' : datetime.datetime.now(),
-                    'total_score': float(r['total_score']),
-                    'size_score': float(r['size_score']),
-                    'property': float(r['property']),
-                    'property_score': float(r['property_score']),
-                    'label': float(r['label']),
-                    'size': float(r['size']),
-                    'token_match': int(r['token_match']),
+                    'score': int(r['total_score']),
                     'btn_key': btn_key
                 }
                 post_value_list.append(temp_data_dict)
                 feedback_text.append(btn_key)
-
                 # Expander will display input text field for feedback
                 with st.expander("Feedback"):
-                    form = st.form(key=str(btn_key))
-                    property_radio_btn = form.radio("Property Weights", options, key='property'+str(btn_key))
-                    property_weights_feedback.append(property_radio_btn)
-                    size_radio_btn = form.radio("Size Weights", options, key='size'+str(btn_key))
-                    size_weights_feedback.append(size_radio_btn)
-                    label_radio = form.radio("Label Weights", options, key='label'+str(btn_key))
-                    label_weights_feedback.append(label_radio)
-
+                    # with st.form(str(btn_key)):
+                    feedback_text[btn_key] = st.text_input("Reason:", key=btn_key, placeholder="Unmatched images etc.")
                     # post_value_list[btn_key]['reason'] = feedback_text
-                    # submitted = form.form_submit_button("Submit", on_click=submit_feedback, kwargs=(post_value_list[btn_key]))
-                    submitted = form.form_submit_button("Submit")
-                    if submitted:
-                        # print(property_radio_btn)
-                        # post_value_list[btn_key]['']
-                        submit_feedback(**post_value_list[btn_key])
-
+                    submitted = st.button("Submit", key=btn_key, on_click=submit_feedback, kwargs=(post_value_list[btn_key]))
 # *********************************************
+

@@ -81,3 +81,23 @@ wcwidth==0.2.5
 webencodings==0.5.1
 widgetsnbextension==3.5.2
 zipp==3.6.0
+compress_pickle
+hydralit >=1.0.9
+hydralit_components >=1.0.4
+hotstepper
+altair
+pandas
+spacy
+validators
+bokeh
+srsly
+spacy-streamlit
+astroquery
+sunpy
+astropy
+pydeck
+scipy
+matplotlib
+echarts-python
+streamlit-echarts
+echarts
